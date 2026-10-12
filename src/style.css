@@ -1,0 +1,53 @@
+:root { font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif; color: #233e36; background: #f7f7f0; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+a { color: inherit; text-underline-offset: 3px; }
+.app { display: grid; grid-template-columns: 350px minmax(0, 1fr); min-height: 100dvh; }
+.panel { padding: 32px 28px 24px; border-right: 1px solid #d8dfd5; }
+.eyebrow { font-family: Consolas, monospace; font-size: 12px; letter-spacing: 1px; margin: 0 0 32px; display: flex; justify-content: space-between; }
+.eyebrow span { color: #68766b; font-size: 10px; }
+h1 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: 34px; font-weight: 600; line-height: 1.5; letter-spacing: 1px; margin: 0 0 14px; }
+p { font-size: 13px; line-height: 1.9; }
+.intro { color: #68766b; margin-bottom: 28px; }
+section { border-top: 1px solid #d8dfd5; padding-top: 18px; margin-top: 24px; }
+h2 { font-family: Consolas, monospace; color: #8a958a; font-size: 12px; font-weight: 400; display: flex; gap: 12px; align-items: center; margin: 0 0 15px; }
+h2 span { font-family: "Yu Gothic", sans-serif; color: #233e36; font-size: 14px; font-weight: 700; }
+fieldset { border: 0; padding: 0; margin: 0; }
+fieldset label { display: flex; align-items: center; gap: 12px; padding: 10px 0; cursor: pointer; font-size: 14px; }
+input { accent-color: #233e36; width: 18px; height: 18px; margin: 0; }
+small { display: block; color: #68766b; font-family: Consolas, monospace; font-size: 11px; margin-top: 4px; }
+.route-key { display: inline-block; width: 18px; height: 3px; background: #b94a29; margin-right: 7px; vertical-align: middle; }
+.spots { font-size: 13px; line-height: 2.3; padding-left: 26px; }
+.spots li::marker { font-family: Consolas, monospace; color: #b94a29; }
+#reset-view { width: 100%; display: flex; justify-content: space-between; background: #233e36; color: #fff; border: 0; padding: 13px 15px; cursor: pointer; font-size: 13px; }
+#reset-view:hover { background: #36574c; }
+button:disabled { opacity: .55; cursor: wait; }
+:focus-visible { outline: 3px solid #b94a29; outline-offset: 4px; }
+#map-status { font-size: 11px; color: #68766b; min-height: 42px; }
+#map-status[data-error] { color: #9e351a; }
+footer { border-top: 1px solid #d8dfd5; padding-top: 12px; margin-top: 16px; color: #68766b; }
+footer p { font-size: 10px; }
+footer p:first-child { font-family: Consolas, monospace; letter-spacing: .5px; }
+footer a { font-size: 11px; display: block; margin-top: 8px; }
+.map-area { position: relative; min-height: 600px; }
+#map { position: absolute; inset: 0; }
+.map-caption { pointer-events: none; position: absolute; top: 22px; left: 22px; display: flex; align-items: center; gap: 10px; padding: 12px 15px; border: 1px solid #d8dfd5; background: #f7f7f0; font-size: 12px; }
+.map-caption span:last-child { font-family: Consolas, monospace; font-size: 10px; color: #68766b; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #b94a29; }
+.spot-marker { display: grid; place-items: center; width: 38px; height: 38px; border: 3px solid #fff; border-radius: 50%; background: #233e36; color: #fff; font-family: Consolas, monospace; font-size: 13px; cursor: pointer; box-shadow: 0 2px 8px #233e3640; }
+.spot-marker:hover { background: #b94a29; }
+.maplibregl-popup-content { padding: 18px; color: #233e36; border-radius: 2px; }
+.maplibregl-popup-content h3 { font-size: 15px; margin: 0 0 8px; }
+.maplibregl-popup-content p { font-size: 12px; margin: 0; }
+.maplibregl-popup-close-button { padding: 2px 6px; font-size: 18px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 760px) {
+  .app { display: flex; flex-direction: column; }
+  .panel { padding: 24px; border-right: 0; }
+  h1 { font-size: 28px; }
+  .eyebrow { margin-bottom: 20px; }
+  .map-area { order: -1; height: 55dvh; min-height: 360px; }
+  .map-caption { top: 14px; left: 12px; padding: 10px; }
+  .map-caption span:last-child { display: none; }
+}

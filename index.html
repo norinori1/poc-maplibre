@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="description" content="MapLibre GL JSの地図、マーカー、GeoJSON、レイヤー操作を試す技術検証環境。" />
+    <title>MapLibre Lab | 東京・丸の内</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <header>
+          <p class="eyebrow">MAPLIBRE LAB <span>01 / TOKYO</span></p>
+          <h1>地図で試す、<br />小さな実験。</h1>
+          <p class="intro">東京・丸の内を舞台に、地図の基本機能を触って確かめるPoCです。</p>
+        </header>
+        <section aria-labelledby="layers-heading">
+          <h2 id="layers-heading">01 <span>表示レイヤー</span></h2>
+          <fieldset id="layer-controls" disabled>
+            <legend class="sr-only">地図の表示を切り替える</legend>
+            <label><input id="basemap-toggle" type="checkbox" checked /><span>ベースマップ<small>OpenStreetMap / Raster</small></span></label>
+            <label><input id="route-toggle" type="checkbox" checked /><span><i class="route-key" aria-hidden="true"></i>サンプルルート<small>GeoJSON / LineString</small></span></label>
+            <label><input id="markers-toggle" type="checkbox" checked /><span>スポットマーカー<small>Marker + Popup / 3地点</small></span></label>
+          </fieldset>
+        </section>
+        <section aria-labelledby="spots-heading">
+          <h2 id="spots-heading">02 <span>試してみる</span></h2>
+          <p>番号付きのマーカーをクリックすると、地点の説明が開きます。ドラッグで移動、＋ / − でズームできます。</p>
+          <ol class="spots"><li>東京駅・丸の内駅舎</li><li>丸の内仲通り</li><li>皇居外苑</li></ol>
+          <button id="reset-view" type="button" disabled>ルート全体を表示 <span aria-hidden="true">↗</span></button>
+          <p id="map-status" role="status" aria-live="polite">地図を読み込んでいます…</p>
+        </section>
+        <footer>
+          <p>LEARNING PROTOTYPE · API KEY FREE</p>
+          <p>ルートは描画確認用の概略線です。経路案内には使用できません。</p>
+          <a href="https://operations.osmfoundation.org/policies/tiles/" target="_blank" rel="noopener noreferrer">タイル利用条件 ↗</a>
+          <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">地図の問題を報告 ↗</a>
+        </footer>
+      </aside>
+      <main class="map-area" aria-label="地図の技術検証">
+        <div id="map" aria-label="東京・丸の内の地図"></div>
+        <div class="map-caption"><span class="dot" aria-hidden="true"></span>東京・丸の内 <span>35.68° N / 139.76° E</span></div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
