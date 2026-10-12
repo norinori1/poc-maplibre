@@ -2,6 +2,24 @@
 
 Vite + TypeScriptで、MapLibre GL JSの基本操作を学ぶための技術検証環境です。本番アプリや経路案内サービスではありません。APIキー、バックエンド、環境変数は不要です。地図タイルの取得にはインターネット接続が必要です。
 
+## スクリーンショット
+
+実際のOpenStreetMapタイルで撮影した画面です。撮影条件は [docs/screenshots/README.md](docs/screenshots/README.md) に記載しています。
+
+### PC表示
+
+![東京・丸の内の地図、3地点のマーカー、GeoJSONルートと表示切替パネル](docs/screenshots/desktop.png)
+
+### マーカーのポップアップ
+
+![東京駅のマーカーをクリックして地点説明を開いた画面](docs/screenshots/popup.png)
+
+### スマホ幅の表示
+
+ブラウザー幅390pxでの表示です（モバイル実機ではありません）。
+
+<img src="docs/screenshots/mobile.png" alt="スマホ幅でルート全体と3地点のマーカー、操作パネルを表示した画面" width="260" />
+
 ## セットアップ・起動
 
 Node.js **22.12以上（推奨: 24 LTS）** と npm を使用します。
