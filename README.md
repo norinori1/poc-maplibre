@@ -29,14 +29,34 @@ npm ci
 npm run dev
 ```
 
-ターミナルに表示されるURL（通常 `http://127.0.0.1:5173`）を開いてください。WebGL対応ブラウザーが必要です。
+ターミナルに表示されるURL（通常 `http://127.0.0.1:5173/poc-maplibre/`）を開いてください。WebGL対応ブラウザーが必要です。
 
 ```sh
 npm run build    # TypeScriptの型チェック + dist/へのビルド
-npm run preview  # ビルドした成果物を確認（通常 http://127.0.0.1:4173）
+npm run preview  # ビルドした成果物を確認（通常 http://127.0.0.1:4173/poc-maplibre/）
 ```
 
 `preview` は検証用サーバーです。本番配信には使用しません。
+
+## GitHub Pagesへの公開
+
+公開URL: https://norinori1.github.io/poc-maplibre/
+
+リポジトリの **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に設定してください。
+GitHub Actionsを有効にし、公式の `actions/*` が許可されている必要があります。
+`github-pages` environmentに保護ルールを設ける場合は、`main` からのデプロイを許可してください。
+
+`.github/workflows/deploy.yml` は、`main` へのpush（PRのマージを含む）で型チェック・ビルドを行い、`dist/` を公開します。
+手動で再デプロイする場合は **Actions → Deploy to GitHub Pages → Run workflow** で `main` を選択してください。
+他のブランチからの手動実行はスキップされます。Node.js 24と既存のnpmロックファイルを使用し、npmキャッシュでインストール時間を抑えます。
+APIキーやSecretsの設定は不要です。
+
+`vite.config.ts` の `base: '/poc-maplibre/'` により、CSS・JavaScript・MapLibre WorkerのURLに公開パスを付けます。
+GeoJSONは既存実装のままJavaScriptに同梱され、OSMタイルはHTTPSで取得します。
+
+公開確認は、Actionsのbuild/deployが成功した後に公開URLを開き、地図・3つのマーカー・ポップアップ・レイヤー切替・範囲リセットを試してください。
+ブラウザーのNetworkで `/poc-maplibre/assets/` 配下のJS・CSS・WorkerがHTTP 200で読み込まれ、Consoleにエラーがないことも確認します。
+ローカルでは `npm ci` → `npm run build` → `npm run preview` の順で、同じ公開パスの動作を確認できます。
 
 ## 使用技術・ファイル構成
 
