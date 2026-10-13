@@ -14,7 +14,7 @@
         <header>
           <p class="eyebrow">MAPLIBRE LAB <span>01 / TOKYO</span></p>
           <h1>地図で試す、<br />小さな実験。</h1>
-          <p class="intro">東京・丸の内を舞台に、地図の基本機能を触って確かめるPoCです。</p>
+          <p class="intro">東京・丸の内を舞台に、地図の基本機能と標高・勾配の推定を触って確かめるPoCです。</p>
         </header>
         <section aria-labelledby="layers-heading">
           <h2 id="layers-heading">01 <span>表示レイヤー</span></h2>
@@ -32,9 +32,32 @@
           <button id="reset-view" type="button" disabled>ルート全体を表示 <span aria-hidden="true">↗</span></button>
           <p id="map-status" role="status" aria-live="polite">地図を読み込んでいます…</p>
         </section>
+        <section aria-labelledby="elevation-heading">
+          <h2 id="elevation-heading">03 <span>標高・勾配</span></h2>
+          <p class="note">数値は国土地理院DEMから求めた<strong>推定値(地表面)</strong>です。橋・トンネルや道路の実際の勾配とは一致しません。日本国内のみ対応します。</p>
+          <fieldset id="elevation-mode" disabled>
+            <legend class="sr-only">地図をクリックしたときの操作</legend>
+            <label><input type="radio" name="elevation-mode" value="off" checked /><span>操作なし<small>マーカーのポップアップを優先</small></span></label>
+            <label><input type="radio" name="elevation-mode" value="point" /><span>標高を調べる<small>地図をクリックした地点の標高</small></span></label>
+            <label><input type="radio" name="elevation-mode" value="slope" /><span>2点の勾配<small>始点・終点の2回クリック</small></span></label>
+          </fieldset>
+          <div id="elevation-result" class="result" role="status" aria-live="polite">地図の準備ができると使えます。</div>
+          <div class="route-profile">
+            <label class="select-label" for="route-select">標高プロファイルの対象</label>
+            <select id="route-select" disabled>
+              <option value="marunouchi">丸の内のサンプルルート(平地)</option>
+              <option value="kudanzaka">九段坂の検証用ルート(上り)</option>
+            </select>
+            <button id="profile-run" type="button" disabled>ルートの標高プロファイルを作成</button>
+            <div id="profile-status" class="result" role="status" aria-live="polite"></div>
+            <svg id="profile-chart" viewBox="0 0 300 130" role="img" aria-label="ルートの標高プロファイル(横軸は累積距離、縦軸は標高)" hidden></svg>
+            <dl id="profile-stats" class="stats"></dl>
+          </div>
+        </section>
         <footer>
           <p>LEARNING PROTOTYPE · API KEY FREE</p>
           <p>ルートは描画確認用の概略線です。経路案内には使用できません。</p>
+          <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">標高: 国土地理院 標高タイル ↗</a>
           <a href="https://operations.osmfoundation.org/policies/tiles/" target="_blank" rel="noopener noreferrer">タイル利用条件 ↗</a>
           <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">地図の問題を報告 ↗</a>
         </footer>

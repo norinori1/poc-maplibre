@@ -4,13 +4,19 @@ import type { Feature, LineString } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import routeJson from './data/route.geojson?raw';
+import hillRouteJson from './data/route-hill.geojson?raw';
+import { setupElevation } from './elevation';
 import { spots } from './data/spots';
 
 // MapLibre v6 の Worker を Vite で依存ファイルごとビルドし、生成URLを指定する。
 maplibregl.setWorkerUrl(workerUrl);
 
 // 同梱した GeoJSON を読み込む。外部の経路探索APIには依存しない。
-const route = JSON.parse(routeJson) as Feature<LineString>;
+const routes: Record<string, Feature<LineString>> = {
+  marunouchi: JSON.parse(routeJson) as Feature<LineString>,
+  kudanzaka: JSON.parse(hillRouteJson) as Feature<LineString>,
+};
+let currentRoute = routes.marunouchi!;
 const status = document.querySelector<HTMLParagraphElement>('#map-status')!;
 const controls = document.querySelector<HTMLFieldSetElement>('#layer-controls')!;
 const resetView = document.querySelector<HTMLButtonElement>('#reset-view')!;
@@ -68,20 +74,32 @@ try {
     return marker;
   });
 
-  // ルート座標から範囲を計算。初期表示とリセットで同じ範囲を使用する。
-  const bounds = new maplibregl.LngLatBounds();
-  for (const [longitude, latitude] of route.geometry.coordinates) bounds.extend([longitude, latitude]);
-  const fitRoute = () => map.fitBounds(bounds, { padding: 65, maxZoom: 16, duration: 0 });
+  // 表示中のルート座標から範囲を計算。初期表示・リセット・ルート切替で同じ処理を使用する。
+  const fitRoute = () => {
+    const bounds = new maplibregl.LngLatBounds();
+    for (const [longitude, latitude] of currentRoute.geometry.coordinates) bounds.extend([longitude, latitude]);
+    map.fitBounds(bounds, { padding: 65, maxZoom: 16, duration: 0 });
+  };
 
   // 4. スタイルの読み込み後に GeoJSON ソースと線レイヤーを追加する。
   map.on('load', () => {
-    map.addSource('sample-route', { type: 'geojson', data: route });
+    map.addSource('sample-route', { type: 'geojson', data: currentRoute });
     map.addLayer({
       id: 'route', type: 'line', source: 'sample-route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': '#b94a29', 'line-width': 5, 'line-opacity': 0.85 },
     });
     fitRoute();
+    // 標高・勾配の操作(クリック標高、2点の勾配、ルートの標高プロファイル)を追加する。
+    const elevation = setupElevation(map, {
+      getRoute: () => currentRoute,
+      onRouteChange: (id) => {
+        currentRoute = routes[id] ?? routes.marunouchi!;
+        (map.getSource('sample-route') as maplibregl.GeoJSONSource).setData(currentRoute);
+        fitRoute();
+      },
+    });
+    elevation.enable();
     controls.disabled = false;
     resetView.disabled = false;
     if (!status.dataset.error) status.textContent = '準備完了 · レイヤーを切り替えてみましょう';
