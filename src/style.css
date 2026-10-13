@@ -51,3 +51,19 @@ footer a { font-size: 11px; display: block; margin-top: 8px; }
   .map-caption { top: 14px; left: 12px; padding: 10px; }
   .map-caption span:last-child { display: none; }
 }
+.note { font-size: 11px; line-height: 1.7; color: #68766b; margin: 0 0 12px; }
+.result { font-size: 12px; line-height: 1.8; min-height: 22px; margin: 12px 0; }
+.result[data-state="error"] { color: #9e351a; }
+.select-label { display: block; font-size: 12px; color: #68766b; margin-bottom: 6px; }
+select { width: 100%; font: inherit; font-size: 13px; padding: 10px; border: 1px solid #b9c4b8; background: #fff; color: #233e36; border-radius: 0; }
+#profile-run { width: 100%; margin-top: 10px; background: #fff; color: #233e36; border: 1px solid #233e36; padding: 12px 15px; cursor: pointer; font-size: 13px; }
+#profile-run:hover:not(:disabled) { background: #eef2ec; }
+#profile-chart { width: 100%; height: auto; display: block; background: #fff; border: 1px solid #d8dfd5; }
+#profile-chart[hidden] { display: none; }
+.chart-axis { stroke: #b9c4b8; stroke-width: 1; }
+.chart-label { font-family: Consolas, monospace; font-size: 9px; fill: #68766b; }
+.chart-line { stroke: #b94a29; stroke-width: 2; stroke-linejoin: round; }
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12px; margin: 12px 0 0; }
+.stats dt { color: #68766b; }
+.stats dd { margin: 0; font-family: Consolas, monospace; text-align: right; }
+.stats:empty { display: none; }
