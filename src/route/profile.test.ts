@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ElevationResult } from '../dem/sampler';
 import { haversineMeters } from '../geo/math';
-import { buildRouteProfile, cumulativeAscentDescent, sampleRoutePoints, summarizeProfile, type ProfilePoint } from './profile';
+import { buildRouteProfile, cumulativeAscentDescent, sampleRoutePoints, summarizeProfile, smoothProfile, gradeWindows, type ProfilePoint } from './profile';
 
 const line = [[139.76, 35.68], [139.762, 35.68], [139.762, 35.682]];
 
@@ -60,12 +60,33 @@ describe('summarizeProfile', () => {
     expect(s.netGradePercent).toBeCloseTo(-5);
     expect(s.descent).toBeCloseTo(10);
   });
-  it('欠測点は飛ばして集計し、件数を返す', () => {
+  it('欠測点で集計を分割し、全体勾配は算出しない', () => {
     const s = summarizeProfile([pt(0, 0), pt(20, null), pt(40, 2), pt(60, null), pt(80, 4)]);
     expect(s.validCount).toBe(3);
     expect(s.missingCount).toBe(2);
-    expect(s.ascent).toBeCloseTo(4);
-    expect(s.netGradePercent).toBeCloseTo(5);
+    expect(s.ascent).toBe(0);
+    expect(s.netGradePercent).toBeNull();
+    expect(s.windows[50]).toEqual([]);
+    expect(s.missingRate).toBe(0.4);
+  });
+  it('欠測の前後で上昇量のanchorをリセットする', () => {
+    const s = summarizeProfile([pt(0, 0), pt(20, 5), pt(40, null), pt(60, 100), pt(80, 102)]);
+    expect(s.ascent).toBe(7);
+    expect(s.validDistance).toBe(40);
+    expect(s.windows[50]).toEqual([]);
+  });
+  it('50m窓は同じ有効区間内で終点を補間する', () => {
+    const points = Array.from({ length: 11 }, (_, i) => pt(i * 20, i));
+    const windows = gradeWindows(points, 50);
+    expect(windows[0]).toEqual({ from: 0, to: 50, gradePercent: 5 });
+    expect(windows.every((w) => Math.abs(w.gradePercent - 5) < 1e-10)).toBe(true);
+    expect(windows.at(-1)!.to).toBe(190);
+  });
+  it('30m移動平均は欠測を埋めず、別の連続区間や生データを変えない', () => {
+    const points = [pt(0, 0), pt(5, 10), pt(10, null), pt(15, 100), pt(20, 102)];
+    const smoothed = smoothProfile(points);
+    expect(smoothed.map((p) => p.elevation)).toEqual([5, 5, null, 101, 101]);
+    expect(points.map((p) => p.elevation)).toEqual([0, 10, null, 100, 102]);
   });
   it('全点欠測・空は null を返し例外を出さない', () => {
     const s = summarizeProfile([pt(0, null), pt(20, null)]);

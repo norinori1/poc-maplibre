@@ -14,9 +14,10 @@ function el<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string,
 }
 
 /** 横軸=累積距離、縦軸=標高の簡易グラフ。欠測点では線を途切れさせる。 */
-export function renderProfileChart(svg: SVGSVGElement, points: readonly ProfilePoint[]): void {
+export function renderProfileChart(svg: SVGSVGElement, points: readonly ProfilePoint[],
+  additional: readonly { points: readonly ProfilePoint[]; color: string; dashed?: boolean }[] = []): void {
   svg.replaceChildren();
-  const valid = points.filter((p) => p.elevation !== null);
+  const valid = [...points, ...additional.flatMap((s) => [...s.points])].filter((p) => p.elevation !== null);
   if (valid.length < 2) return;
   const total = points[points.length - 1]!.distance;
   const elevations = valid.map((p) => p.elevation as number);
@@ -40,12 +41,15 @@ export function renderProfileChart(svg: SVGSVGElement, points: readonly ProfileP
     el('text', { x: String(W - PAD.right), y: String(H - 6), 'text-anchor': 'end', class: 'chart-label' }, formatDistance(total)),
   );
 
-  let path = '';
-  let pen = false;
-  for (const p of points) {
-    if (p.elevation === null) { pen = false; continue; }
-    path += `${pen ? 'L' : 'M'}${x(p.distance).toFixed(1)} ${y(p.elevation).toFixed(1)}`;
-    pen = true;
+  for (const series of [{ points, color: '#b94a29', dashed: false }, ...additional]) {
+    let path = '';
+    let pen = false;
+    for (const p of series.points) {
+      if (p.elevation === null) { pen = false; continue; }
+      path += `${pen ? 'L' : 'M'}${x(p.distance).toFixed(1)} ${y(p.elevation).toFixed(1)}`;
+      pen = true;
+    }
+    svg.append(el('path', { d: path, stroke: series.color, 'stroke-width': '2',
+      'stroke-dasharray': series.dashed ? '4 3' : 'none', fill: 'none' }));
   }
-  svg.append(el('path', { d: path, class: 'chart-line', fill: 'none' }));
 }

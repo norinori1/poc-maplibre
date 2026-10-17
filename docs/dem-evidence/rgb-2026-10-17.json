@@ -1,0 +1,32 @@
+{
+  "fixtures": {
+    "PNG": [
+      100.5,
+      -0.25,
+      0,
+      null,
+      null
+    ],
+    "WEBP": [
+      100.5,
+      -0.25,
+      0,
+      null,
+      null
+    ]
+  },
+  "realTile": {
+    "url": "https://tiles.mapterhorn.com/16/58208/25804.webp",
+    "status": 200,
+    "bytes": 79822,
+    "rgbSha256": "1edfdab53db6a175e35d96783242f562827bbd2f20b98ad9e4fd82b8d7307707",
+    "firstElevations": [
+      20.6875,
+      20.6875,
+      20.65625,
+      20.625,
+      20.625
+    ]
+  },
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+}

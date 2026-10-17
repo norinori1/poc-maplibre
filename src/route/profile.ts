@@ -1,8 +1,9 @@
 import { averageGradePercent, haversineMeters, interpolate, type LngLat } from '../geo/math';
 import type { ElevationResult } from '../dem/sampler';
+import { waitForConsumer } from '../dem/async';
 
 export interface RoutePoint { distance: number; lng: number; lat: number }
-export interface ProfilePoint extends RoutePoint { elevation: number | null }
+export interface ProfilePoint extends RoutePoint { elevation: number | null; status?: ElevationResult['status']; levelLabel?: string }
 
 export interface ProfileSummary {
   totalDistance: number;
@@ -18,7 +19,12 @@ export interface ProfileSummary {
   steepestDownhillPercent: number | null;
   validCount: number;
   missingCount: number;
+  missingRate: number;
+  validDistance: number;
+  windows: Record<50 | 100, GradeWindow[]>;
 }
+
+export interface GradeWindow { from: number; to: number; gradePercent: number }
 
 export const DEFAULT_SPACING_M = 20;
 export const MAX_POINTS = 400;
@@ -81,27 +87,28 @@ export function cumulativeAscentDescent(elevations: readonly number[], threshold
 export function summarizeProfile(points: readonly ProfilePoint[]): ProfileSummary {
   const valid = points.filter((p): p is ProfilePoint & { elevation: number } => p.elevation !== null);
   const totalDistance = points.length > 0 ? points[points.length - 1]!.distance : 0;
-  const { ascent, descent } = cumulativeAscentDescent(valid.map((p) => p.elevation));
+  const segments = validSegments(points);
+  let ascent = 0;
+  let descent = 0;
+  let validDistance = 0;
+  for (const segment of segments) {
+    const sum = cumulativeAscentDescent(segment.map((p) => p.elevation!));
+    ascent += sum.ascent; descent += sum.descent;
+    validDistance += segment.at(-1)!.distance - segment[0]!.distance;
+  }
   const elevations = valid.map((p) => p.elevation);
 
   let netGradePercent: number | null = null;
-  if (valid.length >= 2) {
+  if (valid.length >= 2 && valid.length === points.length) {
     const first = valid[0]!;
     const last = valid[valid.length - 1]!;
     netGradePercent = averageGradePercent(last.elevation - first.elevation, last.distance - first.distance);
   }
 
-  // 約100m以上離れた有効点の組で勾配を比べる。点が2つ以上の有効区間が必要。
+  const windows = { 50: gradeWindows(points, 50), 100: gradeWindows(points, 100) };
   let steepestUphillPercent: number | null = null;
   let steepestDownhillPercent: number | null = null;
-  let start = 0;
-  for (let end = 1; end < valid.length; end++) {
-    while (start < end - 1 && valid[end]!.distance - valid[start + 1]!.distance >= GRADE_WINDOW_M) start++;
-    const from = valid[start]!;
-    const to = valid[end]!;
-    if (to.distance - from.distance < GRADE_WINDOW_M) continue;
-    const grade = averageGradePercent(to.elevation - from.elevation, to.distance - from.distance);
-    if (grade === null) continue;
+  for (const { gradePercent: grade } of windows[100]) {
     if (steepestUphillPercent === null || grade > steepestUphillPercent) steepestUphillPercent = grade;
     if (steepestDownhillPercent === null || grade < steepestDownhillPercent) steepestDownhillPercent = grade;
   }
@@ -112,13 +119,63 @@ export function summarizeProfile(points: readonly ProfilePoint[]): ProfileSummar
     maxElevation: elevations.length ? Math.max(...elevations) : null,
     netGradePercent, steepestUphillPercent, steepestDownhillPercent,
     validCount: valid.length, missingCount: points.length - valid.length,
+    missingRate: points.length ? (points.length - valid.length) / points.length : 0,
+    validDistance, windows,
   };
+}
+
+/** Missing samples break every calculation; no interpolation across gaps. */
+export function validSegments(points: readonly ProfilePoint[]): ProfilePoint[][] {
+  const segments: ProfilePoint[][] = [];
+  let current: ProfilePoint[] = [];
+  for (const point of points) {
+    if (point.elevation === null || !Number.isFinite(point.elevation)) {
+      if (current.length) segments.push(current);
+      current = [];
+    } else current.push(point);
+  }
+  if (current.length) segments.push(current);
+  return segments;
+}
+
+export function gradeWindows(points: readonly ProfilePoint[], length: number): GradeWindow[] {
+  if (!(length > 0)) return [];
+  const windows: GradeWindow[] = [];
+  for (const segment of validSegments(points)) {
+    for (let i = 0; i < segment.length - 1; i++) {
+      const from = segment[i]!;
+      const target = from.distance + length;
+      if (target > segment.at(-1)!.distance + 1e-6) break;
+      let j = i + 1;
+      while (j < segment.length - 1 && segment[j]!.distance < target) j++;
+      const a = segment[j - 1]!;
+      const b = segment[j]!;
+      const t = Math.min(1, (target - a.distance) / (b.distance - a.distance));
+      const elevation = a.elevation! + (b.elevation! - a.elevation!) * t;
+      const gradePercent = averageGradePercent(elevation - from.elevation!, length);
+      if (gradePercent !== null) windows.push({ from: from.distance, to: target, gradePercent });
+    }
+  }
+  return windows;
+}
+
+/** Centred 30m moving mean, truncated at segment ends; original points remain intact. */
+export function smoothProfile(points: readonly ProfilePoint[], width = 30): ProfilePoint[] {
+  const values = new Map<ProfilePoint, number>();
+  for (const segment of validSegments(points)) {
+    for (const point of segment) {
+      const neighbours = segment.filter((p) => Math.abs(p.distance - point.distance) <= width / 2 + 1e-6);
+      values.set(point, neighbours.reduce((sum, p) => sum + p.elevation!, 0) / neighbours.length);
+    }
+  }
+  return points.map((p) => ({ ...p, elevation: values.get(p) ?? null }));
 }
 
 export interface BuildProfileOptions {
   spacingM?: number;
   signal?: AbortSignal;
   onProgress?: (done: number, total: number) => void;
+  samples?: readonly RoutePoint[];
 }
 export type BuildProfileResult =
   | { status: 'ok'; points: ProfilePoint[]; summary: ProfileSummary; errorCount: number; levelLabels: string[] }
@@ -131,9 +188,10 @@ const BATCH = 8;
 export async function buildRouteProfile(
   coordinates: unknown,
   getElevation: (lng: number, lat: number) => Promise<ElevationResult>,
-  { spacingM = DEFAULT_SPACING_M, signal, onProgress }: BuildProfileOptions = {},
+  { spacingM = DEFAULT_SPACING_M, signal, onProgress, samples: fixedSamples }: BuildProfileOptions = {},
 ): Promise<BuildProfileResult> {
-  const samples = sampleRoutePoints(coordinates, spacingM);
+  const samples = fixedSamples ?? sampleRoutePoints(coordinates, spacingM);
+  if (samples.length > MAX_POINTS) return { status: 'invalid' };
   if (samples.length < 2) return { status: 'invalid' };
 
   const points: ProfilePoint[] = [];
@@ -142,13 +200,16 @@ export async function buildRouteProfile(
   for (let i = 0; i < samples.length; i += BATCH) {
     if (signal?.aborted) return { status: 'cancelled' };
     const batch = samples.slice(i, i + BATCH);
-    const results = await Promise.all(batch.map((p) => getElevation(p.lng, p.lat)));
+    let results: ElevationResult[];
+    try { results = await waitForConsumer(Promise.all(batch.map((p) => getElevation(p.lng, p.lat))), signal); }
+    catch (error) { if (signal?.aborted) return { status: 'cancelled' }; throw error; }
     if (signal?.aborted) return { status: 'cancelled' };
     batch.forEach((p, j) => {
       const r = results[j]!;
       if (r.status === 'ok') levels.add(r.levelLabel);
       if (r.status === 'error') errorCount++;
-      points.push({ ...p, elevation: r.status === 'ok' ? r.elevation : null });
+      points.push({ ...p, elevation: r.status === 'ok' ? r.elevation : null, status: r.status,
+        ...(r.status === 'ok' ? { levelLabel: r.levelLabel } : {}) });
     });
     onProgress?.(points.length, samples.length);
   }

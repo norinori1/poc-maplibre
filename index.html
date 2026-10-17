@@ -34,7 +34,12 @@
         </section>
         <section aria-labelledby="elevation-heading">
           <h2 id="elevation-heading">03 <span>標高・勾配</span></h2>
-          <p class="note">数値は国土地理院DEMから求めた<strong>推定値(地表面)</strong>です。橋・トンネルや道路の実際の勾配とは一致しません。日本国内のみ対応します。</p>
+          <p class="note">数値はDEMから求めた<strong>推定値(地表面)</strong>です。橋・トンネルや道路の実際の勾配とは一致しません。GSIとMapterhornには共通の原資料が含まれ、値の一致は精度保証ではありません。</p>
+          <label class="select-label" for="dem-provider">DEM供給元（地点・2点勾配・ルート共通）</label>
+          <select id="dem-provider" disabled>
+            <option value="gsi">GSI（従来・比較基準）</option>
+            <option value="mapterhorn">Mapterhorn（新規）</option>
+          </select>
           <fieldset id="elevation-mode" disabled>
             <legend class="sr-only">地図をクリックしたときの操作</legend>
             <label><input type="radio" name="elevation-mode" value="off" checked /><span>操作なし<small>マーカーのポップアップを優先</small></span></label>
@@ -48,16 +53,21 @@
               <option value="marunouchi">丸の内のサンプルルート(平地)</option>
               <option value="kudanzaka">九段坂の検証用ルート(上り)</option>
             </select>
+            <label class="select-label" for="profile-spacing">サンプリング間隔（最大400点）</label>
+            <select id="profile-spacing" disabled><option value="5">5m</option><option value="10">10m</option><option value="20" selected>20m（従来）</option></select>
+            <label class="select-label" for="profile-smoothing">表示・比較する値</label>
+            <select id="profile-smoothing" disabled><option value="off">生データ</option><option value="30">生データ ＋ 30m移動平均</option></select>
             <button id="profile-run" type="button" disabled>ルートの標高プロファイルを作成</button>
+            <button id="profile-compare" type="button" disabled>両DEMを同じ条件で比較</button>
             <div id="profile-status" class="result" role="status" aria-live="polite"></div>
             <svg id="profile-chart" viewBox="0 0 300 130" role="img" aria-label="ルートの標高プロファイル(横軸は累積距離、縦軸は標高)" hidden></svg>
-            <dl id="profile-stats" class="stats"></dl>
+            <div id="profile-stats"></div>
           </div>
         </section>
         <footer>
           <p>LEARNING PROTOTYPE · API KEY FREE</p>
           <p>ルートは描画確認用の概略線です。経路案内には使用できません。</p>
-          <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">標高: 国土地理院 標高タイル ↗</a>
+          <div id="dem-attribution"></div>
           <a href="https://operations.osmfoundation.org/policies/tiles/" target="_blank" rel="noopener noreferrer">タイル利用条件 ↗</a>
           <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">地図の問題を報告 ↗</a>
         </footer>

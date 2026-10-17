@@ -1,23 +1,22 @@
 import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
-import { DEM_ATTRIBUTION, DEM_LEVELS } from './dem/config';
-import { loadDemTile } from './dem/loader';
+import { DEM_PROVIDERS, GSI_PROVIDER, type DemProvider } from './dem/config';
+import { demTileLoader, loadDemTile } from './dem/loader';
 import { createElevationSampler, type ElevationResult } from './dem/sampler';
 import { averageGradePercent, haversineMeters, MIN_GRADE_DISTANCE_M, type LngLat } from './geo/math';
-import { buildRouteProfile } from './route/profile';
+import { measureProfiles } from './route/compare';
 import { renderProfileChart } from './ui/chart';
+import { renderComparison } from './ui/comparison';
 import { formatCoordinate, formatDistance, formatElevation, formatGrade, formatSigned, UNAVAILABLE } from './ui/format';
 
 type Mode = 'off' | 'point' | 'slope';
 type Row = readonly [label: string, value: string];
 
-const getElevation = createElevationSampler(DEM_LEVELS, loadDemTile);
-
 const reasonOf = (result: Exclude<ElevationResult, { status: 'ok' }>): string => {
   switch (result.status) {
     case 'out-of-range': return '範囲外(標高データの提供範囲外です)';
     case 'nodata': return '欠測(この地点の標高データがありません)';
-    case 'error': return '通信エラー(標高タイルを取得できませんでした)';
+    case 'error': return result.kind === 'decode' ? '復号エラー(標高画像を読み取れませんでした)' : '通信エラー(標高タイルを取得できませんでした)';
   }
 };
 
@@ -48,6 +47,28 @@ export function setupElevation(
   const profileStatus = document.querySelector<HTMLDivElement>('#profile-status')!;
   const chart = document.querySelector<SVGSVGElement>('#profile-chart')!;
   const stats = document.querySelector<HTMLElement>('#profile-stats')!;
+  const providerSelect = document.querySelector<HTMLSelectElement>('#dem-provider')!;
+  const spacingSelect = document.querySelector<HTMLSelectElement>('#profile-spacing')!;
+  const smoothingSelect = document.querySelector<HTMLSelectElement>('#profile-smoothing')!;
+  const compareButton = document.querySelector<HTMLButtonElement>('#profile-compare')!;
+  const attribution = document.querySelector<HTMLElement>('#dem-attribution')!;
+  let provider = GSI_PROVIDER;
+  const getElevation = (lng: number, lat: number) => createElevationSampler(provider, loadDemTile)(lng, lat);
+  let profileRequested = false;
+
+  const showAttribution = (providers: readonly DemProvider[]) => {
+    attribution.replaceChildren();
+    for (const item of providers) {
+      const link = document.createElement('a');
+      link.href = item.attributionUrl;
+      link.target = '_blank'; link.rel = 'noopener noreferrer';
+      link.textContent = item.attribution;
+      const note = document.createElement('p');
+      note.textContent = `${item.source}。${item.noDataNote}`;
+      attribution.append(link, note);
+    }
+  };
+  showAttribution([provider]);
 
   let mode: Mode = 'off';
   let picks: LngLat[] = [];
@@ -119,7 +140,8 @@ export function setupElevation(
       [
         ['緯度, 経度', formatCoordinate(point[0], point[1])],
         ['推定標高', elevationText(result)],
-        ...(result.status === 'ok' ? [['データ', `${DEM_ATTRIBUTION}(${result.levelLabel})`] as Row] : []),
+        ['供給元', provider.name],
+        ...(result.status === 'ok' ? [['データ', `${provider.attribution}(${result.levelLabel})`] as Row] : []),
       ],
       '地表面の推定値です。橋・トンネル上の路面高とは一致しないことがあります。',
       result.status !== 'ok',
@@ -142,6 +164,7 @@ export function setupElevation(
 
     const distance = haversineMeters(a, b);
     const rows: Row[] = [
+      ['供給元', provider.name],
       ['始点', formatCoordinate(a[0], a[1])],
       ['始点の標高', elevationText(ea)],
       ['終点', formatCoordinate(b[0], b[1])],
@@ -189,6 +212,7 @@ export function setupElevation(
     chart.replaceChildren();
     stats.replaceChildren();
     runButton.disabled = false;
+    compareButton.disabled = false;
   };
   const failProfile = (message: string) => {
     profileStatus.textContent = message;
@@ -196,55 +220,74 @@ export function setupElevation(
   };
 
   routeSelect.addEventListener('change', () => {
+    profileRequested = false;
     clearProfile();
+    showAttribution([provider]);
     options.onRouteChange(routeSelect.value);
   });
 
-  runButton.addEventListener('click', async () => {
+  const runProfiles = async (compare: boolean) => {
     clearProfile();
+    profileRequested = true;
     const controller = new AbortController();
     profileController = controller;
     runButton.disabled = true;
+    compareButton.disabled = true;
+    const selected = compare ? DEM_PROVIDERS : [provider];
+    showAttribution(selected);
     profileStatus.textContent = '標高を取得しています… 0%';
-    const result = await buildRouteProfile(options.getRoute().geometry?.coordinates, getElevation, {
-      signal: controller.signal,
-      onProgress: (done, total) => {
-        if (profileController === controller) profileStatus.textContent = `標高を取得しています… ${Math.round((done / total) * 100)}%`;
-      },
-    });
+    let profiles;
+    try {
+      profiles = await measureProfiles(options.getRoute().geometry?.coordinates, selected, {
+        signal: controller.signal, spacingM: Number(spacingSelect.value), smoothing: smoothingSelect.value === '30',
+        onProgress: (name, done, total) => {
+          if (profileController === controller) profileStatus.textContent = `${name}: 標高を取得しています… ${Math.round((done / total) * 100)}%`;
+        },
+      });
+    } catch (error) {
+      if (profileController !== controller) return;
+      profileController = null;
+      runButton.disabled = compareButton.disabled = false;
+      failProfile(error instanceof Error ? error.message : 'プロファイルの取得に失敗しました');
+      return;
+    }
     if (profileController !== controller) return; // 中断・ルート切替・再実行された
     profileController = null;
     runButton.disabled = false;
-
-    if (result.status !== 'ok') {
-      failProfile('ルートの座標が不正または空のため、プロファイルを作成できません。');
-      return;
-    }
-    const { summary, points } = result;
-    if (summary.validCount < 2) {
-      failProfile(
-        result.errorCount > 0
-          ? '標高タイルを取得できませんでした。通信環境を確認して再実行してください。'
-          : 'このルートは標高データの提供範囲外、または欠測のため、プロファイルを作成できません。',
-      );
-      return;
-    }
-    profileStatus.textContent = summary.missingCount > 0
-      ? `作成しました(推定値)。${summary.missingCount}点は標高を取得できず、除いて集計しています。`
-      : '作成しました(推定値)。';
+    compareButton.disabled = false;
+    if (!profiles?.length) return;
+    const missing = profiles.reduce((n, p) => n + p.summary.missingCount, 0);
+    profileStatus.textContent = missing ? `作成しました（推定値）。取得不可は合計${missing}点。欠測区間では集計を分割します。` : '作成しました（推定値）。';
+    if (profiles.every((p) => p.summary.validCount < 2)) profileStatus.dataset.state = 'error';
     chart.toggleAttribute('hidden', false);
-    renderProfileChart(chart, points);
-    const grade = (value: number | null) => formatGrade(value, UNAVAILABLE);
-    renderRows(stats, [
-      ['総距離', formatDistance(summary.totalDistance)],
-      ['獲得標高(上昇量)', formatElevation(summary.ascent)],
-      ['下降量', formatElevation(summary.descent)],
-      ['最低 / 最高', `${formatElevation(summary.minElevation!)} / ${formatElevation(summary.maxElevation!)}`],
-      ['全体の平均勾配', grade(summary.netGradePercent)],
-      ['約100m区間の最大上り', grade(summary.steepestUphillPercent)],
-      ['約100m区間の最大下り', grade(summary.steepestDownhillPercent)],
-      ['データ', `${DEM_ATTRIBUTION}(${result.levelLabels.join('・') || '—'})`],
+    const extras = profiles.flatMap((p, i) => [
+      ...(i > 0 ? [{ points: p.points, color: '#1f6f8b', dashed: false }] : []),
+      ...(p.smoothed ? [{ points: p.smoothed.points, color: i === 0 ? '#b94a29' : '#1f6f8b', dashed: true }] : []),
     ]);
+    renderProfileChart(chart, profiles[0]!.points, extras);
+    renderComparison(stats, profiles);
+    const memory = document.createElement('p');
+    memory.textContent = `復号済みタイルキャッシュ: ${(demTileLoader.cacheInfo().bytes / 1024 / 1024).toFixed(2)} MiB / 上限32 MiB（画像・地図等のメモリは含みません）`;
+    stats.append(memory);
+  };
+  runButton.addEventListener('click', () => { void runProfiles(false); });
+  compareButton.addEventListener('click', () => { void runProfiles(true); });
+  const refreshProfile = () => {
+    if (profileRequested) void runProfiles(false);
+    else { clearProfile(); showAttribution([provider]); }
+  };
+  spacingSelect.addEventListener('change', refreshProfile);
+  smoothingSelect.addEventListener('change', refreshProfile);
+  providerSelect.addEventListener('change', () => {
+    provider = DEM_PROVIDERS.find((item) => item.id === providerSelect.value) ?? GSI_PROVIDER;
+    pickGeneration++;
+    const previous = [...picks];
+    if (mode === 'point' && previous[0]) void onPoint(previous[0]);
+    else if (mode === 'slope' && previous.length === 2) {
+      picks = [previous[0]!];
+      void onSlope(previous[1]!);
+    } else describeMode();
+    refreshProfile();
   });
 
   return {
@@ -252,6 +295,8 @@ export function setupElevation(
       modeFieldset.disabled = false;
       routeSelect.disabled = false;
       runButton.disabled = false;
+      compareButton.disabled = false;
+      providerSelect.disabled = spacingSelect.disabled = smoothingSelect.disabled = false;
       describeMode();
     },
   };

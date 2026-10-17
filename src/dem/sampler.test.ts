@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DemLevel } from './config';
 import { createElevationSampler, type TileLoader, type TileResult } from './sampler';
 import { lngLatToGlobalPixel } from './tiles';
+import { GSI_PROVIDER, MAPTERHORN_PROVIDER } from './config';
 
 const hi: DemLevel = { label: '5m', zoom: 15, urlTemplate: 'hi/{z}/{x}/{y}' };
 const lo: DemLevel = { label: '10m', zoom: 14, urlTemplate: 'lo/{z}/{x}/{y}' };
@@ -17,6 +18,35 @@ const loaderOf = (handlers: Record<string, TileResult>): TileLoader => async (le
   handlers[level.label] ?? { status: 'missing' };
 
 describe('createElevationSampler', () => {
+  it('Mapterhorn 404 never requests GSI or a different zoom', async () => {
+    const calls: DemLevel[] = [];
+    const get = createElevationSampler(MAPTERHORN_PROVIDER, async (level) => {
+      calls.push(level); return { status: 'missing' };
+    });
+    expect(await get(139.76, 35.68)).toEqual({ status: 'out-of-range' });
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((l) => l.providerId === 'mapterhorn' && l.zoom === 16)).toBe(true);
+  });
+  it('preserves provider identity and does not hide network errors behind fallback', async () => {
+    const calls: string[] = [];
+    const get = createElevationSampler(GSI_PROVIDER, async (level) => {
+      calls.push(level.label);
+      return { status: 'error', kind: 'http', httpStatus: 503, error: 'unavailable' };
+    });
+    expect(await get(139.76, 35.68)).toMatchObject({ status: 'error', kind: 'http', httpStatus: 503 });
+    expect(new Set(calls)).toEqual(new Set([GSI_PROVIDER.levels[0]!.label]));
+    const success = createElevationSampler(GSI_PROVIDER, async () => gradientTile(5));
+    expect(await success(139.76, 35.68)).toMatchObject({ status: 'ok', providerId: 'gsi', elevation: 5 });
+  });
+  for (const tileSize of [256, 512] as const) {
+    it(`interpolates across four ${tileSize}px tiles at their shared corner`, async () => {
+      const get = createElevationSampler([{ ...lo, zoom: 1, tileSize }], async (_, tile) => ({
+        status: 'ok', data: new Float32Array(tileSize ** 2).fill(tile.x * 10 + tile.y * 20),
+      }));
+      // (0°, 0°) lies on both tile boundaries; each corner has weight 1/4.
+      expect(await get(0, 0)).toMatchObject({ status: 'ok', elevation: 15 });
+    });
+  }
   const lng = 139.7647;
   const lat = 35.6812;
 

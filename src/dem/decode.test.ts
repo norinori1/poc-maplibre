@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { decodeGsiElevation } from './decode';
+import { decodeGsiElevation, decodeTerrariumElevation } from './decode';
+
+describe('Terrarium', () => {
+  it('decodes zero, positive, negative and fractional elevations', () => {
+    expect(decodeTerrariumElevation(128, 0, 0)).toBe(0);
+    expect(decodeTerrariumElevation(128, 100, 128)).toBe(100.5);
+    expect(decodeTerrariumElevation(127, 255, 192)).toBe(-0.25);
+    expect(decodeTerrariumElevation(127, 156, 0)).toBe(-100);
+  });
+});
 
 describe('decodeGsiElevation', () => {
   it('x = 2^16R + 2^8G + B を 0.01m 単位で換算する', () => {
