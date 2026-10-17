@@ -67,3 +67,13 @@ select { width: 100%; font: inherit; font-size: 13px; padding: 10px; border: 1px
 .stats dt { color: #68766b; }
 .stats dd { margin: 0; font-family: Consolas, monospace; text-align: right; }
 .stats:empty { display: none; }
+.panel, .route-profile { min-width: 0; }
+.route-profile .select-label { margin-top: 12px; }
+#profile-compare { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #233e36; background: #233e36; color: white; cursor: pointer; font: inherit; font-size: 13px; }
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 12px 0; }
+.table-scroll table { border-collapse: collapse; font-size: 11px; line-height: 1.6; width: 100%; }
+.table-scroll th, .table-scroll td { padding: 7px; text-align: right; vertical-align: top; border-bottom: 1px solid #d8dfd5; min-width: 95px; }
+.table-scroll th:first-child { text-align: left; min-width: 115px; }
+.table-scroll thead { background: #eef2ec; }
+#profile-stats p, #profile-stats summary { font-size: 11px; line-height: 1.7; }
+#profile-stats details { margin-top: 12px; }

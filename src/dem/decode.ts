@@ -9,3 +9,8 @@ export function decodeGsiElevation(r: number, g: number, b: number): number | nu
   if (x === NO_DATA) return null;
   return (x < NO_DATA ? x : x - RANGE) * 0.01;
 }
+
+/** Terrarium has no universal RGB nodata sentinel. Alpha is checked before decoding. */
+export function decodeTerrariumElevation(r: number, g: number, b: number): number {
+  return r * 256 + g + b / 256 - 32768;
+}

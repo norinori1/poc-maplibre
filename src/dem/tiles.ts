@@ -3,7 +3,7 @@ export interface TileCoord { z: number; x: number; y: number }
 
 const MAX_LAT = 85.0511287798;
 
-/** Webメルカトルの全域ピクセル座標(小数)。zoom でのタイル×TILE_SIZE の座標系。 */
+/** Webメルカトルの全域ピクセル座標(小数)。zoom でのタイル数×tileSize の座標系。 */
 export function lngLatToGlobalPixel(lng: number, lat: number, zoom: number, tileSize = 256): { x: number; y: number } {
   const clampedLat = Math.max(-MAX_LAT, Math.min(MAX_LAT, lat));
   const scale = 2 ** zoom * tileSize;

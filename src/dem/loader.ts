@@ -1,4 +1,4 @@
-import { decodeGsiElevation } from './decode';
+import { decodeGsiElevation, decodeTerrariumElevation } from './decode';
 import type { DemLevel } from './config';
 import type { TileLoader, TileResult } from './sampler';
 import { tileUrl, type TileCoord } from './tiles';
@@ -24,9 +24,10 @@ export async function decodeTileImage(blob: Blob, level: DemLevel): Promise<Floa
     context.drawImage(bitmap, 0, 0);
     const rgba = context.getImageData(0, 0, size, size).data;
     const data = new Float32Array(size * size);
+    const decode = level.encoding === 'terrarium' ? decodeTerrariumElevation : decodeGsiElevation;
     for (let i = 0; i < data.length; i++) {
       data[i] = rgba[i * 4 + 3] !== 255 ? NaN
-        : decodeGsiElevation(rgba[i * 4]!, rgba[i * 4 + 1]!, rgba[i * 4 + 2]!) ?? NaN;
+        : decode(rgba[i * 4]!, rgba[i * 4 + 1]!, rgba[i * 4 + 2]!) ?? NaN;
     }
     return data;
   } finally { bitmap.close(); }
@@ -70,7 +71,7 @@ export function createDemTileLoader(options: LoaderOptions = {}) {
   const fetchTile = async (level: DemLevel, tile: TileCoord, metrics?: LoadMetrics): Promise<TileResult> => {
     let response: Response;
     if (metrics) metrics.requests++;
-    try { response = await fetcher(tileUrl(level.urlTemplate, tile)); }
+    try { response = await fetcher(tileUrl(level.urlTemplate, tile), { signal: AbortSignal.timeout(20_000) }); }
     catch (error) { return { status: 'error', kind: 'network', error }; }
     if (response.status === 404) return { status: 'missing' };
     if (!response.ok) return { status: 'error', kind: 'http', httpStatus: response.status, error: new Error(`HTTP ${response.status}`) };

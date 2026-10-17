@@ -54,7 +54,7 @@ async function sampleLevel(load: TileLoader, level: DemLevel, lng: number, lat: 
 /** 解像度の高い順にレベルを試す。欠測・提供範囲外は次のレベルへ進む。 */
 export function createElevationSampler(config: readonly DemLevel[] | DemProvider, load: TileLoader) {
   const provider = 'id' in config ? config : undefined;
-  const levels = provider ? provider.levels : config as readonly DemLevel[];
+  const levels = provider ? provider.levels.map((level) => ({ ...level, providerId: provider.id })) : config as readonly DemLevel[];
   return async function getElevation(lng: number, lat: number): Promise<ElevationResult> {
     if (!Number.isFinite(lng) || !Number.isFinite(lat) || Math.abs(lat) > 85.0511287798) return { status: 'out-of-range' };
     const wrappedLng = ((lng + 180) % 360 + 360) % 360 - 180;

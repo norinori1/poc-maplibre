@@ -7,7 +7,7 @@ export interface DemLevel {
   urlTemplate: string;
   providerId?: string;
   tileSize?: 256 | 512;
-  encoding?: 'gsi';
+  encoding?: 'gsi' | 'terrarium';
 }
 
 export interface DemProvider {
@@ -24,7 +24,7 @@ export interface DemProvider {
   noDataNote: string;
 }
 
-// 5m メッシュ(提供範囲が限られる)を優先し、404 のときは 10m にフォールバックする。
+// 5m メッシュ(提供範囲が限られる)を優先し、404・欠測のときは 10m にフォールバックする。
 export const DEM_LEVELS: readonly DemLevel[] = [
   { label: '5mメッシュ', zoom: 15, urlTemplate: 'https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png' },
   { label: '10mメッシュ', zoom: 14, urlTemplate: 'https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png' },
@@ -42,3 +42,17 @@ export const GSI_PROVIDER: DemProvider = {
   fallback: ['missing', 'nodata'],
   noDataNote: '404・欠測のみ5mから10mへ切替。通信エラーでは切り替えません。',
 };
+
+export const MAPTERHORN_PROVIDER: DemProvider = {
+  id: 'mapterhorn', name: 'Mapterhorn（新規）', attribution: '© Mapterhorn · 日本の原資料: 国土地理院',
+  attributionUrl: 'https://mapterhorn.com/attribution/',
+  source: '各地域の公開DEM。日本はGSI由来の1m/5m/10m等を含む（地点別解像度は未確定）',
+  termsUrl: 'https://mapterhorn.com/attribution/',
+  bounds: [-180, -85.0511287, 180, 85.0511287],
+  levels: [{ label: 'Terrarium z16 / 512px（原資料の解像度とは異なる）', zoom: 16,
+    urlTemplate: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp', providerId: 'mapterhorn', tileSize: 512, encoding: 'terrarium' }],
+  fallback: [],
+  noDataNote: 'z16で取得。404時は取得不可。GSIや別ズームへ自動切替しません。配信前に補完・0m化された欠測は検出できません。',
+};
+
+export const DEM_PROVIDERS: readonly DemProvider[] = [GSI_PROVIDER, MAPTERHORN_PROVIDER];

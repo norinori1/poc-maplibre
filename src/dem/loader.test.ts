@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDemTileLoader } from './loader';
+import { createDemTileLoader, decodeTileImage } from './loader';
 import type { DemLevel } from './config';
 
 const level: DemLevel = { label: 'test', zoom: 1, urlTemplate: 'https://example.test/{z}/{x}/{y}' };
@@ -8,6 +8,27 @@ const decode = async () => new Float32Array(256 ** 2).fill(12);
 const response = () => new Response(new Uint8Array([1, 2, 3]));
 
 describe('bounded DEM loader', () => {
+  it('checks image dimensions, alpha and encoding, and always closes the bitmap', async () => {
+    const close = vi.fn();
+    let width = 512;
+    const bitmap = vi.fn(async () => ({ width, height: 512, close }));
+    const rgba = new Uint8ClampedArray(512 * 512 * 4);
+    rgba.set([128, 100, 128, 255, 128, 0, 0, 0, 128, 0, 0, 128]);
+    vi.stubGlobal('createImageBitmap', bitmap);
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => ({
+      drawImage: () => {}, getImageData: () => ({ data: rgba }),
+    }) }) });
+    try {
+      const data = await decodeTileImage(new Blob(), { ...level, tileSize: 512, encoding: 'terrarium' });
+      expect(data[0]).toBe(100.5);
+      expect(data[1]).toBeNaN();
+      expect(data[2]).toBeNaN();
+      expect(bitmap).toHaveBeenCalledWith(expect.any(Blob), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+      width = 256;
+      await expect(decodeTileImage(new Blob(), { ...level, tileSize: 512 })).rejects.toThrow('Unexpected DEM image size');
+      expect(close).toHaveBeenCalledTimes(2);
+    } finally { vi.unstubAllGlobals(); }
+  });
   it('shares pending work, separates providers, and counts body bytes once', async () => {
     const fetcher = vi.fn(async () => response());
     const loader = createDemTileLoader({ fetch: fetcher, decode });
