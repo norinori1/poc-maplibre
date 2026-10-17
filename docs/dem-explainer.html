@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEMを切り替えて、標高を比べる — 実装説明資料</title>
+<style>
+:root{color-scheme:light;font-family:"Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;color:#233e36;background:#f7f7f0;line-height:1.8}
+*{box-sizing:border-box}body{margin:0}main{max-width:1000px;margin:auto;padding:56px 32px}header{border-bottom:2px solid #233e36;padding-bottom:28px;margin-bottom:30px}.eyebrow{font:12px Consolas,monospace;letter-spacing:.1em;color:#68766b}h1{font-size:clamp(28px,5vw,46px);line-height:1.45;margin:16px 0}h2{font-size:23px;margin:0 0 18px}h3{font-size:16px;margin:0 0 8px}p{margin:8px 0 16px}section{padding:30px 0;border-bottom:1px solid #cbd5c8}a{color:#25596d;text-underline-offset:3px}code{font-family:Consolas,monospace;font-size:.9em;overflow-wrap:anywhere}.lead{font-size:18px;max-width:48em}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:white;border:1px solid #d8dfd5;padding:22px}.tag{font-size:12px;color:#68766b}.flow{display:flex;align-items:stretch;gap:12px;list-style:none;padding:0}.flow li{flex:1;padding:16px;background:#eaf0e6;border-top:3px solid #233e36}.flow strong{display:block}.flow small{display:block;font-size:12px;line-height:1.8}.flow .step{font:12px Consolas,monospace;color:#68766b;display:block;margin-bottom:6px}.note{background:#f0e9dc;border-left:4px solid #b94a29;padding:14px 18px;font-size:14px}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:12px;text-align:left;border-bottom:1px solid #d8dfd5;vertical-align:top}thead{background:#eaf0e6}ul,ol{padding-left:24px}.bars{margin:20px 0}.bar{height:32px;background:#b94a29;color:white;display:flex;align-items:center;padding-left:10px;margin:7px 0;min-width:150px;font:13px Consolas,monospace}.bar.blue{background:#1f6f8b}.caption{font-size:12px;color:#68766b}.links{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}footer{font-size:12px;padding-top:24px;color:#68766b}.check{color:#25596d;font-weight:700}
+@media(max-width:650px){main{padding:28px 20px}.grid{grid-template-columns:1fr}.flow{flex-direction:column}.flow li{border-top:0;border-left:3px solid #233e36}table{min-width:570px}}
+@media print{body{background:white}main{padding:0;max-width:none}section,.card{break-inside:avoid}h1{font-size:32px}.flow{display:flex}.grid{display:grid;grid-template-columns:1fr 1fr}a{color:inherit}.scroll{overflow:visible}footer{break-inside:avoid}@page{size:A4;margin:15mm}}
+</style>
+</head>
+<body><main>
+<header><div class="eyebrow">MAPLIBRE LAB / DEM PROVIDERS / 2026-10-17</div>
+<h1>DEMを切り替えて、<br>同じ場所の標高を比べる。</h1>
+<p class="lead">地図表示はそのままに、標高を取得する部分を共通化。GSIとMapterhornを、地点・2点勾配・ルートプロファイルで比較できるPoCです。</p>
+<div class="links"><a href="dem-explainer.md">コードの読み方・デモ台本</a><a href="dem-validation.md">実測と検証記録</a><a href="dem-pr3-plan.md">自治体DEMの次期計画</a></div></header>
+<section><h2>01　何を分け、何を共有するか</h2>
+<div class="grid"><div class="card"><div class="tag">供給元ごとの設定</div><h3>DemProvider</h3><p>名前、出典と帰属、タイルURL、ズーム、256/512px、復号方式、提供範囲、欠測時の方針を定義します。</p><code>src/dem/config.ts</code></div>
+<div class="card"><div class="tag">両供給元で同じ処理</div><h3>取得・補間・集計</h3><p>通信、Promise共有、上限付きキャッシュ、双線形補間、距離・勾配・獲得標高の計算は共通です。</p><code>src/dem/ · src/route/</code></div></div>
+<p>MapLibreは地図と選択点を描画します。標高計算は独立したサンプラーで行い、3D地形表示や外部APIキー、バックエンドを追加しません。</p></section>
+<section><h2>02　クリックしてから高さが出るまで</h2>
+<ol class="flow"><li><span class="step">STEP 1</span><strong>座標を決める</strong><small>クリック位置、2点、またはルート上の最大400点。</small></li><li><span class="step">STEP 2</span><strong>タイルを取得</strong><small>選択中Providerで座標変換。必要な画像だけ取得し、重複は共有。</small></li><li><span class="step">STEP 3</span><strong>RGBを高さへ</strong><small>色変換・拡縮をせず復号。隣接タイルも使って双線形補間。</small></li><li><span class="step">STEP 4</span><strong>比較して表示</strong><small>欠測で区間を分け、表とSVGへ。古い非同期結果は破棄。</small></li></ol>
+<p class="caption">取得・復号は最大6件並列。復号済みタイルは全体32MiB・128件のLRU。通信・復号エラーは保存せず再試行できます。</p></section>
+<section><h2>03　GSIとMapterhornの違い</h2><div class="scroll"><table><thead><tr><th>項目</th><th>GSI</th><th>Mapterhorn</th></tr></thead><tbody>
+<tr><th>配信形式</th><td>PNG / 256px</td><td>lossless WebP / 512px</td></tr>
+<tr><th>取得レベル</th><td>5m/z15 → 10m/z14</td><td>z16固定。z17は試験地点で404</td></tr>
+<tr><th>復号方式</th><td>GSI RGB、0.01m単位</td><td>Terrarium：<code>R×256+G+B/256−32768</code></td></tr>
+<tr><th>取得できない場合</th><td>404・欠測のみ10mへ</td><td>GSIや別ズームへ自動切替しない</td></tr>
+<tr><th>日本の原資料</th><td>国土地理院</td><td>GSI由来の1m/5m/10m等を含む</td></tr>
+</tbody></table></div>
+<p class="note">「GSIの配信サーバーを使わない」と「GSI由来のデータを使わない」は別条件です。今回のMapterhorn追加は前者を実現します。また、ズームや出力間隔が細かくても、元の測量精度が向上するわけではありません。</p></section>
+<section><h2>04　実測すると、何が見えるか</h2>
+<div class="grid"><div><h3>九段坂 / 約387m / 20m間隔</h3><p>生データから求めた獲得標高（1m変化閾値）。</p><div class="bars"><div class="bar" style="width:73%">GSI　21.9 m</div><div class="bar blue" style="width:85%">Mapterhorn　25.5 m</div></div><p>全体平均勾配は <strong>+4.5% / +3.0%</strong>。検出できた欠測は両方0点でした。</p></div>
+<div class="card"><h3>間隔を5mにすると</h3><p>獲得標高はGSI <strong>29.0m</strong>、Mapterhorn <strong>26.5m</strong>。同じルートでもサンプリングと細かな起伏の拾い方で変わります。</p><p>30m移動平均も重ね、変化を確認できます。欠測の前後は平均も集計もつなぎません。</p></div></div>
+<p class="note">地表面DEMは橋・高架・トンネルの道路高とは異なる場合があります。両DEMが近くても原資料が共通かもしれません。値の一致も差も、それだけで精度の証明にはなりません。</p>
+<p class="caption">Chrome 155 / Windows、ローカルbuild+preview、/poc-maplibre/。アプリキャッシュ空と再実行を区別し、HTTPキャッシュは維持。全12条件の記録は検証資料を参照。</p></section>
+<section><h2>05　説明するときの操作順</h2><ol><li>GSIで地点を選び、Mapterhornへ切り替える。同じ地点が再計測される。</li><li>2点の勾配を試し、供給元を切り替える。地点・勾配とも供給元を表示する。</li><li>九段坂・20mを選び「両DEMを同じ条件で比較」。各サンプル表を開く。</li><li>5m・30m移動平均で再度比較し、実線と破線、獲得標高の変化を見る。</li><li>同条件で再実行し、キャッシュ利用時の取得数・処理時間を確認する。</li></ol></section>
+<section><h2>06　確認済みと、残る課題</h2><div class="grid"><div><h3 class="check">確認済み</h3><p>60単体テスト・ビルド、実タイルの取得、PNG/WebPのRGB保持、Provider切替、古い結果の排除、404時にGSIへ切り替えないこと、375px幅の表示。</p></div><div><h3>未検証・データの限界</h3><p>公開GitHub Pages、実機モバイル、Safari/Firefox、正解標高との精度比較。Mapterhornで配信前に補完・0m化された欠測は、配信RGBから復元できません。</p></div></div><p>非GSI由来のDEMはPR 3で検証します。兵庫県・VIRTUAL SHIZUOKAについて、既存の産総研配信と原資料・規約を調べ、地域を絞って進める計画です。</p></section>
+<footer>資料は単体HTMLとしてブラウザで開けます。印刷にも対応。仕様・利用条件の一次資料はREADMEとPR 3計画書にリンクしています。© OpenStreetMap contributors / 国土地理院 / © Mapterhorn（各データの帰属はアプリ内に表示）。</footer>
+</main></body></html>
