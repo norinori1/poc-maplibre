@@ -1,6 +1,6 @@
 import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
-import { DEM_ATTRIBUTION, DEM_LEVELS } from './dem/config';
+import { DEM_ATTRIBUTION, GSI_PROVIDER } from './dem/config';
 import { loadDemTile } from './dem/loader';
 import { createElevationSampler, type ElevationResult } from './dem/sampler';
 import { averageGradePercent, haversineMeters, MIN_GRADE_DISTANCE_M, type LngLat } from './geo/math';
@@ -11,13 +11,13 @@ import { formatCoordinate, formatDistance, formatElevation, formatGrade, formatS
 type Mode = 'off' | 'point' | 'slope';
 type Row = readonly [label: string, value: string];
 
-const getElevation = createElevationSampler(DEM_LEVELS, loadDemTile);
+const getElevation = createElevationSampler(GSI_PROVIDER, loadDemTile);
 
 const reasonOf = (result: Exclude<ElevationResult, { status: 'ok' }>): string => {
   switch (result.status) {
     case 'out-of-range': return '範囲外(標高データの提供範囲外です)';
     case 'nodata': return '欠測(この地点の標高データがありません)';
-    case 'error': return '通信エラー(標高タイルを取得できませんでした)';
+    case 'error': return result.kind === 'decode' ? '復号エラー(標高画像を読み取れませんでした)' : '通信エラー(標高タイルを取得できませんでした)';
   }
 };
 

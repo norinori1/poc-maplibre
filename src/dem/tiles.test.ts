@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { globalPixelToTile, lngLatToGlobalPixel, tileUrl } from './tiles';
 
 describe('lngLatToGlobalPixel / globalPixelToTile', () => {
+  it('512px doubles global pixels without changing the geographic tile', () => {
+    const small = lngLatToGlobalPixel(139.7647, 35.6812, 14, 256);
+    const large = lngLatToGlobalPixel(139.7647, 35.6812, 14, 512);
+    expect(large.x).toBe(small.x * 2);
+    expect(large.y).toBe(small.y * 2);
+    expect(globalPixelToTile(Math.floor(large.x), Math.floor(large.y), 14, 512)!.tile)
+      .toEqual(globalPixelToTile(Math.floor(small.x), Math.floor(small.y), 14, 256)!.tile);
+    expect(globalPixelToTile(512, 512, 2, 512)).toMatchObject({ tile: { x: 1, y: 1 }, col: 0, row: 0 });
+  });
   it('東京駅付近(z14)は GSI タイル 14/14552/6451 に入る', () => {
     const { x, y } = lngLatToGlobalPixel(139.7647, 35.6812, 14);
     const located = globalPixelToTile(Math.floor(x), Math.floor(y), 14)!;
