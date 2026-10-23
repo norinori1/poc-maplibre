@@ -5,6 +5,7 @@ import { demTileLoader, loadDemTile } from './dem/loader';
 import { createElevationSampler, type ElevationResult } from './dem/sampler';
 import { averageGradePercent, haversineMeters, MIN_GRADE_DISTANCE_M, type LngLat } from './geo/math';
 import { measureProfiles } from './route/compare';
+import { fetchRoadRoute, type RoadProfile, type RoadRoute, type RoadRouteResult, type RoutedProfile } from './route/roads';
 import { renderProfileChart } from './ui/chart';
 import { renderComparison } from './ui/comparison';
 import { formatCoordinate, formatDistance, formatElevation, formatGrade, formatSigned, UNAVAILABLE } from './ui/format';
@@ -20,7 +21,19 @@ const reasonOf = (result: Exclude<ElevationResult, { status: 'ok' }>): string =>
   }
 };
 
-const elevationText = (result: ElevationResult): string =>
+const ROAD_PROFILE_LABEL: Record<RoutedProfile, string> = { bike: '自転車で通れる道に沿う', foot: '徒歩の道に沿う' };
+
+const roadFailureReason = (result: Exclude<RoadRouteResult, { status: 'ok' | 'cancelled' }>): string => {
+  if (result.status === 'no-route') return '2点を結ぶ道路の経路が見つかりませんでした(川・海・立入不可の範囲を挟んでいる可能性があります)';
+  switch (result.kind) {
+    case 'timeout': return '経路探索サーバーの応答がありませんでした(タイムアウト)';
+    case 'network': return '経路探索サーバーに接続できませんでした(通信エラー)';
+    case 'http': return '経路探索サーバーがエラーを返しました';
+    case 'invalid': return '経路探索サーバーの応答を読み取れませんでした';
+  }
+};
+
+const elevationText =(result: ElevationResult): string =>
   result.status === 'ok' ? formatElevation(result.elevation) : `${UNAVAILABLE}: ${reasonOf(result)}`;
 
 /** dl に行を描画する。値は textContent のみで入れ、HTMLとして解釈しない。 */
@@ -56,6 +69,8 @@ export function setupElevation(
   const getElevation = (lng: number, lat: number) => createElevationSampler(provider, loadDemTile)(lng, lat);
   let profileRequested = false;
 
+  const roadSelect = document.querySelector<HTMLSelectElement>('#road-profile')!;
+
   const showAttribution = (providers: readonly DemProvider[]) => {
     attribution.replaceChildren();
     for (const item of providers) {
@@ -74,6 +89,11 @@ export function setupElevation(
   let picks: LngLat[] = [];
   let pickGeneration = 0; // 新しいクリックや切替で、古い非同期結果を捨てる
   let profileController: AbortController | null = null;
+  let roadProfile: RoadProfile = 'bike';
+  let slopeLine: LngLat[] | null = null; // 2点勾配で表示する線。道路経路、または直線モードでは null
+  let roadController: AbortController | null = null;
+  // 公開サーバーへの負荷を抑えるため、直前の1経路だけ使い回す(DEM供給元の切替など)。
+  let roadCache: { key: string; route: RoadRoute } | null = null;
 
   // 選択点と2点間の線。ベースマップやルートの表示切替とは独立したレイヤー。
   const emptyPicks: FeatureCollection<Point | LineString> = { type: 'FeatureCollection', features: [] };
@@ -96,8 +116,10 @@ export function setupElevation(
     const features: Feature<Point | LineString>[] = picks.map((p, i) => ({
       type: 'Feature', properties: { role: i === 0 ? 'start' : 'end' }, geometry: { type: 'Point', coordinates: [...p] },
     }));
-    if (picks.length === 2) {
-      features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: picks.map((p) => [...p]) } });
+    // 道路モードでは経路が取れるまで線を描かない(直線を道路経路に見せない)。
+    const line = slopeLine ?? (picks.length === 2 && roadProfile === 'straight' ? picks : null);
+    if (line) {
+      features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line.map((p) => [...p]) } });
     }
     (map.getSource('elevation-picks') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
   };
@@ -123,8 +145,15 @@ export function setupElevation(
     else showMessage('「標高を調べる」か「2点の勾配」を選ぶと、地図のクリックで計測できます。');
   };
 
+  const cancelRoad = () => {
+    roadController?.abort();
+    roadController = null;
+    slopeLine = null;
+  };
+
   const clearPicks = () => {
     pickGeneration++;
+    cancelRoad();
     picks = [];
     drawPicks();
   };
@@ -148,29 +177,61 @@ export function setupElevation(
     );
   };
 
-  const onSlope = async (point: LngLat) => {
-    const generation = ++pickGeneration;
-    if (picks.length >= 2) picks = [];
-    picks.push(point);
-    drawPicks();
-    if (picks.length === 1) {
-      showMessage('始点を設定しました。終点をクリックしてください。');
-      return;
+  /** 道路モードの経路を取得する。同じ2点・同じ種類は直前の結果を使い回す。 */
+  const loadRoad = async (a: LngLat, b: LngLat, profile: RoutedProfile): Promise<RoadRouteResult> => {
+    const key = JSON.stringify([profile, a, b]);
+    if (roadCache?.key === key) return { status: 'ok', route: roadCache.route };
+    const controller = new AbortController();
+    roadController = controller;
+    const result = await fetchRoadRoute(a, b, profile, { signal: controller.signal });
+    if (roadController === controller) roadController = null;
+    if (result.status === 'ok') roadCache = { key, route: result.route };
+    return result;
+  };
+
+  /** picks の2点について、選択中の測り方(道路 / 直線)で高低差と勾配を表示する。 */
+  const evaluateSlope = async (generation: number) => {
+    const [clickA, clickB] = picks as [LngLat, LngLat];
+    const profile = roadProfile; // 待機中に選択が変わっても、この計測は開始時の選択で通す
+    cancelRoad();
+    let a = clickA;
+    let b = clickB;
+    let distance = haversineMeters(clickA, clickB);
+    const rows: Row[] = [['供給元', provider.name]];
+
+    if (profile !== 'straight') {
+      drawPicks();
+      showMessage('道路の経路を取得しています…');
+      const road = await loadRoad(clickA, clickB, profile);
+      if (generation !== pickGeneration || road.status === 'cancelled') return;
+      if (road.status !== 'ok') {
+        // 失敗時に直線へ黙って切り替えると道路距離と誤解されるため、理由を示して止める。
+        showRows([['経路', ROAD_PROFILE_LABEL[profile]]], `${roadFailureReason(road)}。「直線」を選ぶと2点間の直線で計測できます。`, true);
+        return;
+      }
+      const { coordinates } = road.route;
+      a = coordinates[0]!;
+      b = coordinates.at(-1)!;
+      distance = road.route.distance;
+      slopeLine = coordinates;
+      drawPicks();
+      rows.push(['経路', ROAD_PROFILE_LABEL[profile]]);
+      rows.push(['道路への補正', `始点 ${formatDistance(haversineMeters(clickA, a))} / 終点 ${formatDistance(haversineMeters(clickB, b))}`]);
     }
-    const [a, b] = picks as [LngLat, LngLat];
+
     showMessage('標高を取得しています…');
     const [ea, eb] = await Promise.all([getElevation(a[0], a[1]), getElevation(b[0], b[1])]);
     if (generation !== pickGeneration) return;
 
-    const distance = haversineMeters(a, b);
-    const rows: Row[] = [
-      ['供給元', provider.name],
-      ['始点', formatCoordinate(a[0], a[1])],
+    const onRoad = profile !== 'straight';
+    rows.push(
+      [onRoad ? '始点(道路上)' : '始点', formatCoordinate(a[0], a[1])],
       ['始点の標高', elevationText(ea)],
-      ['終点', formatCoordinate(b[0], b[1])],
+      [onRoad ? '終点(道路上)' : '終点', formatCoordinate(b[0], b[1])],
       ['終点の標高', elevationText(eb)],
-      ['水平距離', formatDistance(distance)],
-    ];
+    );
+    if (onRoad) rows.push(['直線距離', formatDistance(haversineMeters(clickA, clickB))]);
+    rows.push([onRoad ? '道路距離' : '水平距離', formatDistance(distance)]);
     if (ea.status !== 'ok' || eb.status !== 'ok') {
       showRows(rows, '標高を取得できないため、高低差と勾配は計算しません。', true);
       return;
@@ -181,7 +242,22 @@ export function setupElevation(
       '平均勾配',
       distance < MIN_GRADE_DISTANCE_M ? `距離が${MIN_GRADE_DISTANCE_M}m未満のため計算しません` : formatGrade(averageGradePercent(delta, distance)),
     ]);
-    showRows(rows, '高低差と勾配は「終点 − 始点」で、+は上りです。DEMの推定値で、道路の瞬間勾配ではありません。');
+    showRows(rows, onRoad
+      ? '高低差と勾配は「終点 − 始点」で、+は上りです。勾配は道路距離あたりの平均で、途中の上り下りは含みません。経路はOpenStreetMapの道路データによる目安で、通行可否や安全性は保証しません。'
+      : '高低差と勾配は「終点 − 始点」で、+は上りです。DEMの推定値で、道路の瞬間勾配ではありません。');
+  };
+
+  const onSlope = async (point: LngLat) => {
+    const generation = ++pickGeneration;
+    cancelRoad();
+    if (picks.length >= 2) picks = [];
+    picks.push(point);
+    drawPicks();
+    if (picks.length === 1) {
+      showMessage('始点を設定しました。終点をクリックしてください。');
+      return;
+    }
+    await evaluateSlope(generation);
   };
 
   map.on('click', (event: MapMouseEvent) => {
@@ -281,13 +357,16 @@ export function setupElevation(
   providerSelect.addEventListener('change', () => {
     provider = DEM_PROVIDERS.find((item) => item.id === providerSelect.value) ?? GSI_PROVIDER;
     pickGeneration++;
-    const previous = [...picks];
-    if (mode === 'point' && previous[0]) void onPoint(previous[0]);
-    else if (mode === 'slope' && previous.length === 2) {
-      picks = [previous[0]!];
-      void onSlope(previous[1]!);
-    } else describeMode();
+    if (mode === 'point' && picks[0]) void onPoint(picks[0]);
+    else if (mode === 'slope' && picks.length === 2) void evaluateSlope(pickGeneration);
+    else describeMode();
     refreshProfile();
+  });
+  roadSelect.addEventListener('change', () => {
+    roadProfile = roadSelect.value as RoadProfile;
+    pickGeneration++;
+    if (mode === 'slope' && picks.length === 2) void evaluateSlope(pickGeneration);
+    else { cancelRoad(); drawPicks(); }
   });
 
   return {
@@ -296,7 +375,7 @@ export function setupElevation(
       routeSelect.disabled = false;
       runButton.disabled = false;
       compareButton.disabled = false;
-      providerSelect.disabled = spacingSelect.disabled = smoothingSelect.disabled = false;
+      providerSelect.disabled = spacingSelect.disabled = smoothingSelect.disabled = roadSelect.disabled = false;
       describeMode();
     },
   };
