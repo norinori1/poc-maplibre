@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-10-23T11:22:20.732Z",
+  "baseUrl": "http://127.0.0.1:4175/poc-maplibre/",
+  "checks": [
+    {
+      "name": "real point and provider switch",
+      "gsiPoint": "緯度, 経度\n35.68308°, 139.75653°\n推定標高\n9.7 m\n供給元\nGSI（従来・比較基準）\nデータ\n標高: 国土地理院 標高タイル(10mメッシュ)\n\n地表面の推定値です。橋・トンネル上の路面高とは一致しないことがあります。",
+      "mapterhornPoint": "緯度, 経度\n35.68308°, 139.75653°\n推定標高\n4.5 m\n供給元\nMapterhorn（新規）\nデータ\n© Mapterhorn · 日本の原資料: 国土地理院(Terrarium z16 / 512px（原資料の解像度とは異なる）)\n\n地表面の推定値です。橋・トンネル上の路面高とは一致しないことがあります。"
+    },
+    {
+      "name": "real two-point slope with retained coordinates",
+      "gsiSlope": "供給元\nGSI（従来・比較基準）\n始点\n35.68308°, 139.75653°\n始点の標高\n9.7 m\n終点\n35.68282°, 139.75814°\n終点の標高\n4.5 m\n水平距離\n148 m\n高低差\n−5.2 m\n平均勾配\n−3.5 %(下り)\n\n高低差と勾配は「終点 − 始点」で、+は上りです。DEMの推定値で、道路の瞬間勾配ではありません。",
+      "mapterhornSlope": "供給元\nMapterhorn（新規）\n始点\n35.68308°, 139.75653°\n始点の標高\n4.5 m\n終点\n35.68282°, 139.75814°\n終点の標高\n4.5 m\n水平距離\n148 m\n高低差\n±0.0 m\n平均勾配\n±0.0 %(ほぼ平坦)\n\n高低差と勾配は「終点 − 始点」で、+は上りです。DEMの推定値で、道路の瞬間勾配ではありません。"
+    },
+    {
+      "name": "single-provider profile automatically recalculated"
+    },
+    {
+      "name": "delayed old profile cannot overwrite provider switch"
+    },
+    {
+      "name": "delayed old point cannot overwrite provider switch"
+    },
+    {
+      "name": "simulated 404: no GSI fallback",
+      "message": "緯度, 経度\n35.68308°, 139.75653°\n推定標高\n取得できません: 範囲外(標高データの提供範囲外です)\n供給元\nMapterhorn（新規）\n\n地表面の推定値です。橋・トンネル上の路面高とは一致しないことがあります。"
+    },
+    {
+      "name": "simulated network: no GSI fallback",
+      "message": "緯度, 経度\n35.68308°, 139.75653°\n推定標高\n取得できません: 通信エラー(標高タイルを取得できませんでした)\n供給元\nMapterhorn（新規）\n\n地表面の推定値です。橋・トンネル上の路面高とは一致しないことがあります。"
+    },
+    {
+      "name": "375px comparison, all sample rows, four chart series, attribution"
+    },
+    {
+      "name": "subpath assets and uncaught errors",
+      "failedAssets": [],
+      "errors": []
+    }
+  ],
+  "httpCache": "disabled via CDP; existing harness treats 304 as failure"
+}

@@ -4,6 +4,8 @@
 説明には [図解・デモ用資料（HTML）](docs/dem-explainer.html) と [実装の読み方（Markdown）](docs/dem-explainer.md) を使ってください。
 詳細な [検証結果](docs/dem-validation.md)、[PR 3の調査・実装計画](docs/dem-pr3-plan.md) もあります。
 
+GSI/Mapterhorn切り替え時の地図ずれは、地図領域をパネルの高さから独立させて修正しています（[Issue #11の調査・検証記録](docs/dem-map-stability.md)）。
+
 Vite + TypeScriptで、MapLibre GL JSの基本操作を学ぶための技術検証環境です。本番アプリや経路案内サービスではありません。APIキー、バックエンド、環境変数は不要です。地図タイルの取得にはインターネット接続が必要です。
 
 ## スクリーンショット

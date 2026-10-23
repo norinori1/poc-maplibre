@@ -1,0 +1,236 @@
+{
+  "timestamp": "2026-10-23T11:21:27.772Z",
+  "baseUrl": "http://127.0.0.1:4175/poc-maplibre/",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "errors": [],
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 800,
+      "baseline": {
+        "map": {
+          "width": 930,
+          "height": 800
+        },
+        "canvas": {
+          "width": 930,
+          "height": 800
+        },
+        "markers": [
+          "translate(-50%, -50%) translate(904px, 419px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(615px, 625px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(112px, 281px) rotateX(0deg) rotateZ(0deg)"
+        ]
+      }
+    },
+    {
+      "width": 761,
+      "height": 800,
+      "baseline": {
+        "map": {
+          "width": 411,
+          "height": 800
+        },
+        "canvas": {
+          "width": 411,
+          "height": 800
+        },
+        "markers": [
+          "translate(-50%, -50%) translate(393px, 446px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(290px, 519px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(112px, 397px) rotateX(0deg) rotateZ(0deg)"
+        ]
+      }
+    },
+    {
+      "width": 760,
+      "height": 800,
+      "baseline": {
+        "map": {
+          "width": 760,
+          "height": 440
+        },
+        "canvas": {
+          "width": 760,
+          "height": 440
+        },
+        "markers": [
+          "translate(-50%, -50%) translate(757px, 271px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(528px, 435px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(127px, 161px) rotateX(0deg) rotateZ(0deg)"
+        ]
+      }
+    },
+    {
+      "width": 375,
+      "height": 800,
+      "baseline": {
+        "map": {
+          "width": 375,
+          "height": 440
+        },
+        "canvas": {
+          "width": 375,
+          "height": 440
+        },
+        "markers": [
+          "translate(-50%, -50%) translate(354px, 264px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(264px, 328px) rotateX(0deg) rotateZ(0deg)",
+          "translate(-50%, -50%) translate(109px, 221px) rotateX(0deg) rotateZ(0deg)"
+        ]
+      }
+    }
+  ],
+  "checks": [
+    {
+      "width": 1280,
+      "name": "GSI to Mapterhorn"
+    },
+    {
+      "width": 1280,
+      "name": "Mapterhorn to GSI"
+    },
+    {
+      "width": 1280,
+      "name": "point result"
+    },
+    {
+      "width": 1280,
+      "name": "point provider switch"
+    },
+    {
+      "width": 1280,
+      "name": "single profile"
+    },
+    {
+      "width": 1280,
+      "name": "profile provider switch"
+    },
+    {
+      "width": 1280,
+      "name": "comparison"
+    },
+    {
+      "width": 1280,
+      "name": "expanded samples"
+    },
+    {
+      "width": 1280,
+      "name": "viewport round trip"
+    },
+    {
+      "width": 761,
+      "name": "GSI to Mapterhorn"
+    },
+    {
+      "width": 761,
+      "name": "Mapterhorn to GSI"
+    },
+    {
+      "width": 761,
+      "name": "point result"
+    },
+    {
+      "width": 761,
+      "name": "point provider switch"
+    },
+    {
+      "width": 761,
+      "name": "single profile"
+    },
+    {
+      "width": 761,
+      "name": "profile provider switch"
+    },
+    {
+      "width": 761,
+      "name": "comparison"
+    },
+    {
+      "width": 761,
+      "name": "expanded samples"
+    },
+    {
+      "width": 761,
+      "name": "viewport round trip"
+    },
+    {
+      "width": 760,
+      "name": "GSI to Mapterhorn"
+    },
+    {
+      "width": 760,
+      "name": "Mapterhorn to GSI"
+    },
+    {
+      "width": 760,
+      "name": "point result"
+    },
+    {
+      "width": 760,
+      "name": "point provider switch"
+    },
+    {
+      "width": 760,
+      "name": "single profile"
+    },
+    {
+      "width": 760,
+      "name": "profile provider switch"
+    },
+    {
+      "width": 760,
+      "name": "comparison"
+    },
+    {
+      "width": 760,
+      "name": "expanded samples"
+    },
+    {
+      "width": 760,
+      "name": "viewport round trip"
+    },
+    {
+      "width": 375,
+      "name": "GSI to Mapterhorn"
+    },
+    {
+      "width": 375,
+      "name": "Mapterhorn to GSI"
+    },
+    {
+      "width": 375,
+      "name": "point result"
+    },
+    {
+      "width": 375,
+      "name": "point provider switch"
+    },
+    {
+      "width": 375,
+      "name": "single profile"
+    },
+    {
+      "width": 375,
+      "name": "profile provider switch"
+    },
+    {
+      "width": 375,
+      "name": "comparison"
+    },
+    {
+      "width": 375,
+      "name": "expanded samples"
+    },
+    {
+      "width": 375,
+      "name": "viewport round trip"
+    }
+  ],
+  "baselineCommit": "a9b54f5dc053e097e28c841150725ed6b5a76f23",
+  "productionAssets": [
+    "http://127.0.0.1:4175/poc-maplibre/assets/index-DpEVWCng.js",
+    "http://127.0.0.1:4175/poc-maplibre/assets/index-DtMdbVSt.css"
+  ],
+  "demRequests": "real public GSI and Mapterhorn; no interception"
+}

@@ -30,7 +30,8 @@ footer { border-top: 1px solid #d8dfd5; padding-top: 12px; margin-top: 16px; col
 footer p { font-size: 10px; }
 footer p:first-child { font-family: Consolas, monospace; letter-spacing: .5px; }
 footer a { font-size: 11px; display: block; margin-top: 8px; }
-.map-area { position: relative; min-height: 600px; }
+/* Keep panel reflow (DEM attribution/results) from resizing and shifting the map. */
+.map-area { position: sticky; top: 0; align-self: start; height: 100dvh; min-height: 360px; }
 #map { position: absolute; inset: 0; }
 .map-caption { pointer-events: none; position: absolute; top: 22px; left: 22px; display: flex; align-items: center; gap: 10px; padding: 12px 15px; border: 1px solid #d8dfd5; background: #f7f7f0; font-size: 12px; }
 .map-caption span:last-child { font-family: Consolas, monospace; font-size: 10px; color: #68766b; }
@@ -47,7 +48,7 @@ footer a { font-size: 11px; display: block; margin-top: 8px; }
   .panel { padding: 24px; border-right: 0; }
   h1 { font-size: 28px; }
   .eyebrow { margin-bottom: 20px; }
-  .map-area { order: -1; height: 55dvh; min-height: 360px; }
+  .map-area { position: relative; align-self: auto; order: -1; height: 55dvh; min-height: 360px; }
   .map-caption { top: 14px; left: 12px; padding: 10px; }
   .map-caption span:last-child { display: none; }
 }
