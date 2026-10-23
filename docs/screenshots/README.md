@@ -14,3 +14,13 @@
 - PC表示、ポップアップ表示、スマホ幅に変更して「ルート全体を表示」を押した状態を撮影
 
 地図は © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors。画像内の帰属表示も維持しています。ルートは描画検証用の概略線で、経路案内には使用できません。スマホ幅の画像はブラウザーのサイズ変更によるもので、モバイル実機の動作確認を示すものではありません。
+
+## Issue #11修正後（2026-10-23）
+
+| ファイル | 内容 | ブラウザーの表示サイズ |
+| --- | --- | --- |
+| [dem-map-stable-desktop.png](dem-map-stable-desktop.png) | パネルの高さから独立した地図・初期ルート | 1280 × 800 |
+| [dem-map-stable-mobile.png](dem-map-stable-mobile.png) | 従来の縦並びと55dvhの地図 | 375 × 800 |
+
+Windows / Chrome 155 / Playwright / ソフトウェアWebGL、device scale factor 1。
+実OSMタイルを使用したローカルproduction preview。対象bundleと詳細な検証範囲は[調査記録](../dem-map-stability.md)と[JSON証跡](../dem-evidence/map-stability-2026-10-23.json)を参照。
