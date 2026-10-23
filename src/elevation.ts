@@ -21,6 +21,10 @@ const reasonOf = (result: Exclude<ElevationResult, { status: 'ok' }>): string =>
   }
 };
 
+/** 標高プロファイルの対象で、同梱ルートの代わりに「地図で選んだ2点」を使う選択肢の値。 */
+const PICKED_ROUTE = 'picked';
+const PICKED_HINT = '先に「2点の勾配」で始点・終点をクリックし、経路が表示されてから作成してください。';
+
 const ROAD_PROFILE_LABEL: Record<RoutedProfile, string> = { bike: '自転車で通れる道に沿う', foot: '徒歩の道に沿う' };
 
 const roadFailureReason = (result: Exclude<RoadRouteResult, { status: 'ok' | 'cancelled' }>): string => {
@@ -151,11 +155,23 @@ export function setupElevation(
     slopeLine = null;
   };
 
+  /** 標高プロファイルの対象が「地図で選んだ2点」のとき、その線(道路経路、または直線)。確定前は null。 */
+  const pickedLine = (): readonly LngLat[] | null =>
+    picks.length === 2 ? (roadProfile === 'straight' ? picks : slopeLine) : null;
+
+  /** 選んだ2点や経路が変わったら、それを元にしたプロファイルは古いので消す。 */
+  const dropPickedProfile = () => {
+    if (routeSelect.value !== PICKED_ROUTE) return;
+    profileRequested = false;
+    clearProfile();
+  };
+
   const clearPicks = () => {
     pickGeneration++;
     cancelRoad();
     picks = [];
     drawPicks();
+    dropPickedProfile();
   };
 
   const onPoint = async (point: LngLat) => {
@@ -250,6 +266,7 @@ export function setupElevation(
   const onSlope = async (point: LngLat) => {
     const generation = ++pickGeneration;
     cancelRoad();
+    dropPickedProfile();
     if (picks.length >= 2) picks = [];
     picks.push(point);
     drawPicks();
@@ -299,11 +316,20 @@ export function setupElevation(
     profileRequested = false;
     clearProfile();
     showAttribution([provider]);
-    options.onRouteChange(routeSelect.value);
+    // 「地図で選んだ2点」は同梱ルートではないので、地図のサンプルルート表示は切り替えない。
+    if (routeSelect.value === PICKED_ROUTE) {
+      if (!pickedLine()) profileStatus.textContent = PICKED_HINT;
+    } else options.onRouteChange(routeSelect.value);
   });
 
   const runProfiles = async (compare: boolean) => {
     clearProfile();
+    let coordinates: unknown = options.getRoute().geometry?.coordinates;
+    if (routeSelect.value === PICKED_ROUTE) {
+      const line = pickedLine();
+      if (!line) { profileRequested = false; failProfile(PICKED_HINT); return; }
+      coordinates = line;
+    }
     profileRequested = true;
     const controller = new AbortController();
     profileController = controller;
@@ -314,7 +340,7 @@ export function setupElevation(
     profileStatus.textContent = '標高を取得しています… 0%';
     let profiles;
     try {
-      profiles = await measureProfiles(options.getRoute().geometry?.coordinates, selected, {
+      profiles = await measureProfiles(coordinates, selected, {
         signal: controller.signal, spacingM: Number(spacingSelect.value), smoothing: smoothingSelect.value === '30',
         onProgress: (name, done, total) => {
           if (profileController === controller) profileStatus.textContent = `${name}: 標高を取得しています… ${Math.round((done / total) * 100)}%`;
@@ -365,6 +391,7 @@ export function setupElevation(
   roadSelect.addEventListener('change', () => {
     roadProfile = roadSelect.value as RoadProfile;
     pickGeneration++;
+    dropPickedProfile();
     if (mode === 'slope' && picks.length === 2) void evaluateSlope(pickGeneration);
     else { cancelRoad(); drawPicks(); }
   });
