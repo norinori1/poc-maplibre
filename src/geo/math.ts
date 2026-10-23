@@ -11,6 +11,13 @@ export function haversineMeters(a: LngLat, b: LngLat): number {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/** 折れ線に沿った長さ(m)。 */
+export function pathLengthMeters(line: readonly LngLat[]): number {
+  let total = 0;
+  for (let i = 1; i < line.length; i++) total += haversineMeters(line[i - 1]!, line[i]!);
+  return total;
+}
+
 /** これ未満の水平距離では勾配を計算しない(DEM解像度に対して意味を持たないため)。 */
 export const MIN_GRADE_DISTANCE_M = 5;
 

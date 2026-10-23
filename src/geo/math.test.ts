@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { averageGradePercent, haversineMeters, interpolate } from './math';
+import { averageGradePercent, haversineMeters, interpolate, pathLengthMeters } from './math';
+
+describe('pathLengthMeters', () => {
+  it('点が2つ未満は0', () => {
+    expect(pathLengthMeters([])).toBe(0);
+    expect(pathLengthMeters([[139.76, 35.68]])).toBe(0);
+  });
+  it('寄り道すると直線より長く、各区間の和になる', () => {
+    const a = [139.76, 35.68] as const;
+    const via = [139.761, 35.68] as const;
+    const b = [139.761, 35.681] as const;
+    expect(pathLengthMeters([a, via, b])).toBeCloseTo(haversineMeters(a, via) + haversineMeters(via, b), 6);
+    expect(pathLengthMeters([a, via, b])).toBeGreaterThan(haversineMeters(a, b));
+  });
+});
 
 describe('haversineMeters', () => {
   it('同一点は0', () => expect(haversineMeters([139.76, 35.68], [139.76, 35.68])).toBe(0));

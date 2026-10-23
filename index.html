@@ -46,6 +46,13 @@
             <label><input type="radio" name="elevation-mode" value="point" /><span>標高を調べる<small>地図をクリックした地点の標高</small></span></label>
             <label><input type="radio" name="elevation-mode" value="slope" /><span>2点の勾配<small>始点・終点の2回クリック</small></span></label>
           </fieldset>
+          <label class="select-label road-label" for="road-profile">2点の勾配の測り方</label>
+          <select id="road-profile" disabled>
+            <option value="bike" selected>自転車で通れる道に沿う</option>
+            <option value="foot">徒歩の道に沿う</option>
+            <option value="straight">直線（従来）</option>
+          </select>
+          <p class="note">道路に沿う場合、始点・終点の座標を公開の経路探索サーバー（routing.openstreetmap.de / OSRM）へ送信し、OpenStreetMapの道路データで経路を求めます。</p>
           <div id="elevation-result" class="result" role="status" aria-live="polite">地図の準備ができると使えます。</div>
           <div class="route-profile">
             <label class="select-label" for="route-select">標高プロファイルの対象</label>
